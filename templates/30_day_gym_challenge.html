@@ -59,26 +59,26 @@
   </div>
   
   <script>
-    // Use a storage key unique per user.
+    // Unique localStorage key for this user
     const storageKey = "completedDays_{{ user_id }}";
 
     // Function to mark a day as completed manually.
     function markCompleted(day) {
       var dayElement = document.getElementById("day-" + day);
       dayElement.classList.toggle("completed");
-      // Save completed state in localStorage.
       let completedDays = JSON.parse(localStorage.getItem(storageKey) || "[]");
       if(dayElement.classList.contains("completed")) {
-        if (!completedDays.includes(day)) {
-          completedDays.push(day);
-        }
+          if (!completedDays.includes(day)) {
+              completedDays.push(day);
+          }
       } else {
-        completedDays = completedDays.filter(d => d !== day);
+          completedDays = completedDays.filter(d => d !== day);
       }
       localStorage.setItem(storageKey, JSON.stringify(completedDays));
     }
     
-    // (Optional) Uncomment the code below if you want to load previous progress on page load.
+    // Optional: Auto-load previous progress if desired.
+    // Comment out this block if you want the user to mark progress manually every time.
     /*
     window.onload = function() {
       let completedDays = JSON.parse(localStorage.getItem(storageKey) || "[]");
