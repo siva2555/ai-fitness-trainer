@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>30-Day Yoga Challenge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+      .challenge-container {
+         max-width: 800px;
+         margin: 20px auto;
+         background: rgba(255,255,255,0.95);
+         padding: 20px;
+         border-radius: 10px;
+         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+      }
+      .challenge-day {
+         border-bottom: 1px solid #ddd;
+         padding: 10px 0;
+      }
+      .challenge-day:last-child {
+         border-bottom: none;
+      }
+      h1 {
+         text-align: center;
+         color: #ff6f61;
+      }
+    </style>
+</head>
+<body>
+  <div class="challenge-container">
+    <h1>30-Day Yoga Challenge</h1>
+    {% for day in challenge_plan %}
+      <div class="challenge-day">
+         <h2>Day {{ day.day }}</h2>
+         <p>{{ day.exercises }}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('home', user_id=user_id) }}">Back to Home</a>
+  </div>
+</body>
+</html>

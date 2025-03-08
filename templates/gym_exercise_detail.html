@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ exercise.name }} - Demo & Live Detection (Angle Details)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <style>
+    /* Optional inline styling for the live container */
+    #live-container {
+      margin-top: 20px;
+      position: relative;
+    }
+    #liveVideo, #liveOutput {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #liveOutput {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ exercise.name }}</h1>
+    <p>{{ exercise.description }}</p>
+    
+    <!-- Demo Video Section -->
+    <div class="video-container">
+      <h2>Demo Video</h2>
+      <video width="640" height="480" controls>
+        <source src="{{ url_for('static', filename='videos/gym_exercise_' ~ exercise.id ~ '.mp4') }}" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    
+    <!-- Live Camera Access Section -->
+    <div class="live-detection">
+      <h2>Live Camera Access</h2>
+      <button id="startButton">Start Live Access</button>
+      <div id="live-container" style="display:none;">
+        <video id="liveVideo" width="640" height="480" autoplay muted></video>
+        <canvas id="liveOutput" width="640" height="480"></canvas>
+      </div>
+    </div>
+    
+    <p><a href="{{ url_for('gym_exercises_page', user_id=user_id) }}">Back to Gym Exercises</a></p>
+  </div>
+  
+  <!-- Load TensorFlow.js and PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@latest"></script>
+  
+  <script>
+    const videoElement = document.getElementById('liveVideo');
+    const canvasElement = document.getElementById('liveOutput');
+    const canvasCtx = canvasElement.getContext('2d');
+    const liveContainer = document.getElementById('live-container');
+    const startButton = document.getElementById('startButton');
+    let net;
+
+    // Helper function: Compute angle (in degrees) at point B given points A, B, and C.
+    function computeAngle(A, B, C) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CB = { x: C.x - B.x, y: C.y - B.y };
+      const dot = AB.x * CB.x + AB.y * CB.y;
+      const magAB = Math.sqrt(AB.x * AB.x + AB.y * AB.y);
+      const magCB = Math.sqrt(CB.x * CB.x + CB.y * CB.y);
+      const cosineAngle = dot / (magAB * magCB);
+      const angleRad = Math.acos(Math.min(Math.max(cosineAngle, -1), 1)); // Clamp value between -1 and 1.
+      return Math.round(angleRad * (180 / Math.PI));
+    }
+
+    // Load the PoseNet model asynchronously.
+    async function loadPosenet() {
+      net = await posenet.load();
+      console.log("PoseNet model loaded.");
+    }
+
+    // Set up the camera and return a promise once the video is ready.
+    async function setupCamera() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+            audio: false
+          });
+          videoElement.srcObject = stream;
+          console.log("Camera stream obtained.");
+          return new Promise((resolve) => {
+            videoElement.onloadedmetadata = () => {
+              console.log("Video metadata loaded.");
+              resolve(videoElement);
+            };
+          });
+        } catch (err) {
+          console.error("Error accessing the camera:", err);
+          alert("Error accessing the camera: " + err);
+        }
+      } else {
+        alert("Camera not available.");
+      }
+    }
+
+    // Draw keypoints on the canvas.
+    function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
+      keypoints.forEach(keypoint => {
+        if (keypoint.score < minConfidence) return;
+        const { y, x } = keypoint.position;
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "aqua";
+        ctx.fill();
+      });
+    }
+
+    // Draw skeleton connections between keypoints.
+    function drawSkeleton(keypoints, minConfidence, ctx, scale = 1) {
+      const adjacentKeyPoints = posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+      adjacentKeyPoints.forEach(pair => {
+        ctx.beginPath();
+        ctx.moveTo(pair[0].position.x * scale, pair[0].position.y * scale);
+        ctx.lineTo(pair[1].position.x * scale, pair[1].position.y * scale);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "chartreuse";
+        ctx.stroke();
+      });
+    }
+
+    // Continuously estimate pose, draw landmarks, and display angle details along with extra commands.
+    async function detectPose() {
+      const poseEstimation = await net.estimateSinglePose(videoElement, { flipHorizontal: false });
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+      drawKeypoints(poseEstimation.keypoints, 0.5, canvasCtx);
+      drawSkeleton(poseEstimation.keypoints, 0.5, canvasCtx);
+
+      // Calculate elbow angles for pull-ups (example for gym exercise "Pull-Up").
+      let feedbackText = "";
+      const leftShoulder = poseEstimation.keypoints.find(kp => kp.part === 'leftShoulder');
+      const leftElbow = poseEstimation.keypoints.find(kp => kp.part === 'leftElbow');
+      const leftWrist = poseEstimation.keypoints.find(kp => kp.part === 'leftWrist');
+      const rightShoulder = poseEstimation.keypoints.find(kp => kp.part === 'rightShoulder');
+      const rightElbow = poseEstimation.keypoints.find(kp => kp.part === 'rightElbow');
+      const rightWrist = poseEstimation.keypoints.find(kp => kp.part === 'rightWrist');
+
+      if (leftShoulder && leftElbow && leftWrist && 
+          leftShoulder.score > 0.5 && leftElbow.score > 0.5 && leftWrist.score > 0.5) {
+        const leftElbowAngle = computeAngle(leftShoulder.position, leftElbow.position, leftWrist.position);
+        feedbackText += "Left Elbow Angle: " + leftElbowAngle + "°  ";
+      }
+      if (rightShoulder && rightElbow && rightWrist && 
+          rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
+        const rightElbowAngle = computeAngle(rightShoulder.position, rightElbow.position, rightWrist.position);
+        feedbackText += "Right Elbow Angle: " + rightElbowAngle + "°  ";
+      }
+      
+      // Additional instructions for Pull-Up exercise (if applicable).
+      // For a proper pull-up, the guidelines are typically:
+      // - At the bottom, elbow angles around 90°.
+      // - At the top, nearly extended elbows (about 160° to 180°).
+      if ("{{ exercise.name }}".toLowerCase().includes("pull-up")) {
+         feedbackText += " | Pull-Up Tip: At the bottom, aim for ~90° at the elbows; at the top, extend to ~160°-180°. Keep your grip firm and shoulders down.";
+      }
+      
+      // For other gym exercises, you might add different instructions:
+      // e.g., For Bench Press: "Keep your arms straight and controlled."
+      
+      // Display the combined feedback on the canvas.
+      canvasCtx.font = "20px Arial";
+      canvasCtx.fillStyle = "blue";
+      canvasCtx.fillText(feedbackText, 10, 30);
+
+      requestAnimationFrame(detectPose);
+    }
+
+    async function startLiveDetection() {
+      await setupCamera();
+      videoElement.play();
+      detectPose();
+    }
+
+    // Event listener for the Start button.
+    startButton.addEventListener('click', async () => {
+      console.log("Start button clicked.");
+      startButton.style.display = 'none';
+      liveContainer.style.display = 'block';
+      await loadPosenet();
+      await startLiveDetection();
+      console.log("Live detection started.");
+    });
+  </script>
+</body>
+</html>

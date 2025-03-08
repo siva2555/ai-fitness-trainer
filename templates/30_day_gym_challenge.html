@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>30-Day Gym Challenge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+      .challenge-container {
+         max-width: 800px;
+         margin: 20px auto;
+         background: rgba(255,255,255,0.95);
+         padding: 20px;
+         border-radius: 10px;
+         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+      }
+      .challenge-day {
+         border-bottom: 1px solid #ddd;
+         padding: 10px 0;
+         position: relative;
+      }
+      .challenge-day:last-child {
+         border-bottom: none;
+      }
+      h1 {
+         text-align: center;
+         color: #ff6f61;
+      }
+      .diet-info {
+          font-style: italic;
+          color: #555;
+          margin-top: 5px;
+      }
+      .tick-button {
+          position: absolute;
+          right: 10px;
+          top: 10px;
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+      }
+      .completed {
+          background-color: #d4edda;
+      }
+    </style>
+</head>
+<body>
+  <div class="challenge-container">
+    <h1>30-Day Gym Challenge</h1>
+    {% for day in challenge_plan %}
+      <div class="challenge-day" id="day-{{ day.day }}">
+         <h2>Day {{ day.day }}</h2>
+         <p>{{ day.exercises }}</p>
+         <p class="diet-info"><strong>Diet Recommendation:</strong> {{ day.diet }}</p>
+         <button class="tick-button" onclick="markCompleted({{ day.day }})">✓</button>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('home', user_id=user_id) }}">Back to Home</a>
+  </div>
+  
+  <script>
+    // Use a storage key unique per user.
+    const storageKey = "completedDays_{{ user_id }}";
+
+    // Function to mark a day as completed manually.
+    function markCompleted(day) {
+      var dayElement = document.getElementById("day-" + day);
+      dayElement.classList.toggle("completed");
+      // Save completed state in localStorage.
+      let completedDays = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      if(dayElement.classList.contains("completed")) {
+        if (!completedDays.includes(day)) {
+          completedDays.push(day);
+        }
+      } else {
+        completedDays = completedDays.filter(d => d !== day);
+      }
+      localStorage.setItem(storageKey, JSON.stringify(completedDays));
+    }
+    
+    // (Optional) Uncomment the code below if you want to load previous progress on page load.
+    /*
+    window.onload = function() {
+      let completedDays = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      completedDays.forEach(function(day) {
+        var dayElement = document.getElementById("day-" + day);
+        if(dayElement) {
+          dayElement.classList.add("completed");
+        }
+      });
+    }
+    */
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gym Exercises</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Gym Exercises</h1>
+    <ul class="exercise-list">
+      {% for exercise in exercises %}
+        <li>
+          <a href="{{ url_for('gym_exercise_detail', exercise_id=exercise.id, user_id=user_id) }}">
+            {{ exercise.name }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <p><a href="{{ url_for('home', user_id=user_id) }}">Back to Home</a></p>
+  </div>
+</body>
+</html>

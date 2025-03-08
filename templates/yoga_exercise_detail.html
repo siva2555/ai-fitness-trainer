@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ exercise.name }} - Demo & Live Detection (Yoga)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <style>
+    /* Inline styling for the live container */
+    #live-container {
+      margin-top: 20px;
+      position: relative;
+    }
+    #liveVideo, #liveOutput {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #liveOutput {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ exercise.name }}</h1>
+    <p>{{ exercise.description }}</p>
+    
+    <!-- Demo Video Section -->
+    <div class="video-container">
+      <h2>Demo Video</h2>
+      <video width="640" height="480" controls>
+        <source src="{{ url_for('static', filename='videos/yoga_exercise_' ~ exercise.id ~ '.mp4') }}" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    
+    <!-- Live Camera Access Section -->
+    <div class="live-detection">
+      <h2>Live Camera Access</h2>
+      <button id="startButton">Start Live Access</button>
+      <div id="live-container" style="display:none;">
+        <video id="liveVideo" width="640" height="480" autoplay muted></video>
+        <canvas id="liveOutput" width="640" height="480"></canvas>
+      </div>
+    </div>
+    
+    <p><a href="{{ url_for('yoga_exercises_page', user_id=user_id) }}">Back to Yoga Exercises</a></p>
+  </div>
+  
+  <!-- Load TensorFlow.js and PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@latest"></script>
+  
+  <script>
+    const videoElement = document.getElementById('liveVideo');
+    const canvasElement = document.getElementById('liveOutput');
+    const canvasCtx = canvasElement.getContext('2d');
+    const liveContainer = document.getElementById('live-container');
+    const startButton = document.getElementById('startButton');
+    let net;
+
+    // Load PoseNet model asynchronously.
+    async function loadPosenet() {
+      net = await posenet.load();
+      console.log("PoseNet model loaded.");
+    }
+
+    // Set up the camera and return a promise once the video is ready.
+    async function setupCamera() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+            audio: false
+          });
+          videoElement.srcObject = stream;
+          console.log("Camera stream obtained.");
+          return new Promise((resolve) => {
+            videoElement.onloadedmetadata = () => {
+              console.log("Video metadata loaded.");
+              resolve(videoElement);
+            };
+          });
+        } catch (err) {
+          console.error("Error accessing the camera:", err);
+          alert("Error accessing the camera: " + err);
+        }
+      } else {
+        alert("Camera not available.");
+      }
+    }
+
+    // Draw keypoints on the canvas.
+    function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
+      keypoints.forEach(keypoint => {
+        if (keypoint.score < minConfidence) return;
+        const { y, x } = keypoint.position;
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "aqua";
+        ctx.fill();
+      });
+    }
+
+    // Draw skeleton connections between keypoints.
+    function drawSkeleton(keypoints, minConfidence, ctx, scale = 1) {
+      const adjacentKeyPoints = posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+      adjacentKeyPoints.forEach(pair => {
+        ctx.beginPath();
+        ctx.moveTo(pair[0].position.x * scale, pair[0].position.y * scale);
+        ctx.lineTo(pair[1].position.x * scale, pair[1].position.y * scale);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "chartreuse";
+        ctx.stroke();
+      });
+    }
+
+    // Compute an angle (in degrees) between three keypoints A, B, and C.
+    function computeAngle(A, B, C) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CB = { x: C.x - B.x, y: C.y - B.y };
+      const dot = AB.x * CB.x + AB.y * CB.y;
+      const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
+      const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
+      const cosineAngle = dot / (magAB * magCB);
+      const angleRad = Math.acos(Math.min(Math.max(cosineAngle, -1), 1));
+      return Math.round(angleRad * (180 / Math.PI));
+    }
+
+    // Continuously detect pose, draw landmarks, and display feedback with extra commands.
+    async function detectPose() {
+      const poseEstimation = await net.estimateSinglePose(videoElement, { flipHorizontal: false });
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+      drawKeypoints(poseEstimation.keypoints, 0.5, canvasCtx);
+      drawSkeleton(poseEstimation.keypoints, 0.5, canvasCtx);
+
+      // Calculate angles (for example, knee angles) and prepare feedback text.
+      let feedbackText = "";
+      const leftHip = poseEstimation.keypoints.find(kp => kp.part === 'leftHip');
+      const leftKnee = poseEstimation.keypoints.find(kp => kp.part === 'leftKnee');
+      const leftAnkle = poseEstimation.keypoints.find(kp => kp.part === 'leftAnkle');
+      const rightHip = poseEstimation.keypoints.find(kp => kp.part === 'rightHip');
+      const rightKnee = poseEstimation.keypoints.find(kp => kp.part === 'rightKnee');
+      const rightAnkle = poseEstimation.keypoints.find(kp => kp.part === 'rightAnkle');
+
+      if (leftHip && leftKnee && leftAnkle &&
+          leftHip.score > 0.5 && leftKnee.score > 0.5 && leftAnkle.score > 0.5) {
+        const leftKneeAngle = computeAngle(leftHip.position, leftKnee.position, leftAnkle.position);
+        feedbackText += "Left Knee Angle: " + leftKneeAngle + "°  ";
+      }
+      if (rightHip && rightKnee && rightAnkle &&
+          rightHip.score > 0.5 && rightKnee.score > 0.5 && rightAnkle.score > 0.5) {
+        const rightKneeAngle = computeAngle(rightHip.position, rightKnee.position, rightAnkle.position);
+        feedbackText += "Right Knee Angle: " + rightKneeAngle + "°  ";
+      }
+
+      // Extra instructions based on the exercise type.
+      // For example, if the exercise is "Tree Pose", instruct to keep the arms straight.
+      let instructionText = "";
+      const exerciseName = "{{ exercise.name }}".toLowerCase();
+      if (exerciseName.includes("mountain")) {
+         instructionText = "Keep your arms straight and shoulders relaxed.";
+      } else if (exerciseName.includes("downward")) {
+         instructionText = "Ensure your hands are straight and firmly on the mat.";
+      } else if (exerciseName.includes("tree")) {
+         instructionText = "Balance well; keep your standing leg straight and hands in prayer position.";
+      } else if (exerciseName.includes("child")) {
+         instructionText = "Relax your body and focus on deep, slow breathing.";
+      } else if (exerciseName.includes("warrior")) {
+         instructionText = "Keep your arms extended parallel to the floor and maintain a strong stance.";
+      }
+      if (instructionText) {
+         feedbackText += " " + instructionText;
+      }
+
+      // Display the feedback text on the canvas.
+      canvasCtx.font = "20px Arial";
+      canvasCtx.fillStyle = "blue";
+      canvasCtx.fillText(feedbackText, 10, 30);
+
+      requestAnimationFrame(detectPose);
+    }
+
+    async function startLiveDetection() {
+      await setupCamera();
+      videoElement.play();
+      detectPose();
+    }
+
+    startButton.addEventListener('click', async () => {
+      console.log("Start button clicked.");
+      startButton.style.display = 'none';
+      liveContainer.style.display = 'block';
+      await loadPosenet();
+      await startLiveDetection();
+      console.log("Live detection started.");
+    });
+  </script>
+</body>
+</html>

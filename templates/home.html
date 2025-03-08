@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KARE-Fitness Tracking System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome, {{ user_id }}!</h1>
+    <div class="navigation">
+      <div class="nav-item">
+        <a href="{{ url_for('yoga_exercises_page', user_id=user_id) }}">
+          <img src="{{ url_for('static', filename='images/yoga.jpg') }}" alt="Yoga Exercises">
+          <h2>Yoga Exercises</h2>
+        </a>
+      </div>
+      <div class="nav-item">
+        <a href="{{ url_for('gym_exercises_page', user_id=user_id) }}">
+          <img src="{{ url_for('static', filename='images/gym.jpg') }}" alt="Gym Exercises">
+          <h2>Gym Exercises</h2>
+        </a>
+      </div>
+      <div class="nav-item">
+        <a href="{{ url_for('diet_recommendations', user_id=user_id) }}">
+            <img src="{{ url_for('static', filename='images/diet.jpg') }}" alt="Diet Recommendations">
+            <h2>Diet Recommendations</h2>
+          </a>
+      </div>
+      <div class="nav-item">
+        <a href="{{ url_for('gym_challenge', user_id=user_id) }}">
+            <img src="{{ url_for('static', filename='images/30_day_challenge.jpg') }}" alt="30 Day Gym Challenge">
+            <h2>30 Day GYM Challenge</h2>
+        </a>
+    </div>
+    <div class="nav-item">
+        <a href="{{ url_for('yoga_challenge', user_id=user_id) }}">
+            <img src="{{ url_for('static', filename='images/30_day_challenge.jpg') }}" alt="30 Day Yoga Challenge">
+            <h2>30 Day YOGA Challenge</h2>
+        </a>
+    </div>    
+    </div>
+  </div>
+</body>
+</html>

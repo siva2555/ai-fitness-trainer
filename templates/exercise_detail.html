@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ exercise.name }} - Pose Estimation</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>{{ exercise.name }}</h1>
+    <p>{{ exercise.description }}</p>
+    <div id="camera-container">
+      <video id="video" width="640" height="480" autoplay muted></video>
+      <canvas id="output" width="640" height="480"></canvas>
+    </div>
+    <p><a href="{{ url_for('yoga_exercises_page', user_id=user_id) }}">Back to Yoga Exercises</a></p>
+  </div>
+  
+  <!-- Include TensorFlow.js and PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+  <!-- Updated pose estimation script -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    // Start the pose estimation process when the page loads.
+    initPoseEstimation();
+  </script>
+</body>
+</html>
