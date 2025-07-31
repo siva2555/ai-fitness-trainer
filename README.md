@@ -27,9 +27,9 @@ Database: SQLite
 Frontend: HTML, CSS, JavaScript
 
 AI Model: PoseNet (for real-time pose estimation)
-
+Mediapipe
 Installation & Setup
-
+ComputerVision
 Prerequisites
 
 Ensure you have the following installed on your system:
